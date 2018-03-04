@@ -1,0 +1,14 @@
+[package]
+name = "tmpl"
+version = "0.1.0"
+authors = ["Florian Dehau <work@fdehau.com>"]
+
+[dependencies]
+clap = "2.30"
+serde_json = "1.0"
+failure = "0.1.1"
+tera = "0.11.5"
+
+[dev-dependencies]
+assert_cli = "0.5.4"
+tempdir = "0.3"
