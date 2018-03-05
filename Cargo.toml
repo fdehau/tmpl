@@ -2,6 +2,17 @@
 name = "tmpl"
 version = "0.1.0"
 authors = ["Florian Dehau <work@fdehau.com>"]
+description = """
+A simple cli tool that renders Tera templates using variables defined in JSON
+files
+"""
+keywords = ["cli"]
+repository = "https://github.com/fdehau/tmpl"
+license = "MIT"
+exclude = [".travis.yml"]
+
+[badges]
+travis-ci = { repository = "fdehau/tmpl" }
 
 [dependencies]
 clap = "2.30"
