@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/fdehau/tmpl.svg?branch=master)](https://travis-ci.org/fdehau/tmpl)
+
 A very simple cli tool that renders [Tera](https://github.com/Keats/tera)
 templates using variables defined in JSON files.
 
