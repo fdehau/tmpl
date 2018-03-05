@@ -5,8 +5,6 @@ rust:
 matrix:
   include:
     - os: linux
-      env: TARGET=i686-unknown-linux-gnu
-    - os: linux
       env: TARGET=x86_64-unknown-linux-gnu
 install: ci/install.sh
 script: ci/script.sh
