@@ -8,11 +8,13 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
 install: ci/install.sh
 script: ci/script.sh
+before_deploy: ci/before_deploy.sh
 deploy:
   provider: releases
   api_key:
     secure: jP75yA7B+gwyGThC0tdzE9Fh9YbO+gZXj7iYmDQc/u6vEVCq1+9a9VLPj+fqPJ/T8cp9oxgHc8QPCr6L8YCcQwSerPz2Ihe02uVEeoMyoACf1EDYZa3/OA4QK+AVNndpqkXbSKbsnzJyVcvkW2LlUbNwUSkIps1Ka0wzprKcnRktS8+cZPOcqXfpeI8UQf6XeC3jDFKTwvKDbteZWKLoekOWP2g96sY4N0BA25YJFBiEK2/KB12A9OMMrJO3MbvmVevKjC+CAO1i/tvVNjqc9V87n9fLG9O49zSpFQ9G18ySOTEM34LljYR/oPEWXr3vE6IBMiKw4GBp5bBsSIkdGSZ5ytSRzeMZV7bUFUQi8XNuxNsCzUPWqH5/u5bpdGN8mufusFQT/4gBf3REo7pjSZhQNPnfGFZXwyRaWPjkn/JhEZgeJUSHWjnhG55xgpJHtRT3JVJ3n9448KcX+kB1qcgr8NPjoTAed8TqtmPiYJ6YzINxNbprJfg9jTLcmQtkdAPgj0wKTtA/A0DDDukTgK9jkkm5ZfuNYNNhsPYiTrCfuy4ORB5N+7KoRErCGzt9EJcrBEmsXwKZOHuj5ii9OKZy2zxbiKDxXiH56A3kDx9QjGpNWF+vXm/kouPRH5j670j9IJ2f1vjd+PTwn+IXmEsB7wns9ZCwnailCkCjsHw=
   file: deployment/tmpl-$TRAVIS_TAG-$TARGET.tar.gz
+  skip_cleanup: true
   on:
     branch: master
     repo: fdehau/tmpl
@@ -23,7 +25,7 @@ branches:
     - master
     # Ruby regex to match tags. Required, or travis won't trigger deploys when
     # a new tag is pushed.
-    - /^\d+\.\d+\.\d+.*$/
+    - /^v\d+\.\d+\.\d+.*$/
 notifications:
   email:
     on_success: never
