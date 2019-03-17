@@ -1,9 +1,6 @@
-extern crate assert_cli;
-extern crate tempdir;
-
+use std::fs::File;
 use std::io;
 use std::io::Write;
-use std::fs::File;
 
 use assert_cli::Assert;
 use tempdir::TempDir;

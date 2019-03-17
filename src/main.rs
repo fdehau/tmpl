@@ -1,21 +1,21 @@
-extern crate clap;
-extern crate failure;
-extern crate serde_json;
-extern crate tera;
+use std::error::Error;
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
-use std::path::Path;
-use std::path::PathBuf;
-
-use serde_json::Value;
 use clap::{App, Arg};
-use failure::{Error, SyncFailure};
+use serde_json::Value;
 use tera::Tera;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn merge(a: &mut Value, b: &Value) {
     match (a, b) {
-        (&mut Value::Object(ref mut a), &Value::Object(ref b)) => for (k, v) in b {
-            merge(a.entry(k.clone()).or_insert(Value::Null), v);
-        },
+        (&mut Value::Object(ref mut a), &Value::Object(ref b)) => {
+            for (k, v) in b {
+                merge(a.entry(k.clone()).or_insert(Value::Null), v);
+            }
+        }
         (a, b) => {
             *a = b.clone();
         }
@@ -24,7 +24,7 @@ fn merge(a: &mut Value, b: &Value) {
 
 fn app() -> App<'static, 'static> {
     App::new("tmpl")
-        .version("0.1")
+        .version(VERSION)
         .author("Florian Dehau")
         .about("Renders Tera templates from the command line")
         .arg(
@@ -76,43 +76,23 @@ impl Args {
     }
 }
 
-fn main() {
-    use std::process::exit;
-
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    exit(match render(args) {
-        Err(e) => {
-            for cause in e.causes() {
-                eprintln!("{}", cause);
-            }
-            1
-        }
-        Ok(()) => 0,
-    })
-}
-
-fn render(args: Args) -> Result<(), Error> {
-    use std::fs::File;
-    use std::io::Read;
-    use std::io::Write;
-
     let mut variables = Value::Null;
     for source in args.sources {
-        let file = File::open(source)?;
-        let mut json = serde_json::from_reader(file)?;
-        merge(&mut variables, &mut json);
+        let file = fs::File::open(source)?;
+        let json = serde_json::from_reader(file)?;
+        merge(&mut variables, &json);
     }
 
-    let mut template = String::new();
-    File::open(args.template)?.read_to_string(&mut template)?;
+    let template = fs::read_to_string(args.template)?;
 
-    let result = Tera::one_off(&template, &variables, true).map_err(SyncFailure::new)?;
+    let result = Tera::one_off(&template, &variables, true)?;
 
     if let Some(output) = args.output {
-        File::open(output)?.write(result.as_bytes())?;
+        fs::File::open(output)?.write_all(result.as_bytes())?;
     } else {
-        std::io::stdout().write(result.as_bytes())?;
+        std::io::stdout().write_all(result.as_bytes())?;
     }
-
     Ok(())
 }

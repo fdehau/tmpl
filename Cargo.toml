@@ -10,16 +10,16 @@ keywords = ["cli"]
 repository = "https://github.com/fdehau/tmpl"
 license = "MIT"
 exclude = [".travis.yml"]
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "fdehau/tmpl" }
 
 [dependencies]
-clap = "2.30"
+clap = "2.32"
 serde_json = "1.0"
-failure = "0.1.1"
-tera = "0.11.5"
+tera = "0.11"
 
 [dev-dependencies]
-assert_cli = "0.5.4"
+assert_cli = "0.6"
 tempdir = "0.3"
