@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use clap::{App, Arg};
 use serde_json::Value;
-use tera::Tera;
+use tera::{Context, Tera};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -87,7 +87,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let template = fs::read_to_string(args.template)?;
 
-    let result = Tera::one_off(&template, &variables, true)?;
+    let ctx = Context::from_serialize(variables)?;
+    let result = Tera::one_off(&template, &ctx, true)?;
 
     if let Some(output) = args.output {
         fs::File::open(output)?.write_all(result.as_bytes())?;
