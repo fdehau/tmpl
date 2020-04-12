@@ -69,7 +69,9 @@ fn main() -> anyhow::Result<()> {
             .with_context(|| format!("Failed to open {}", output.display()))?
             .write_all(result.as_bytes())?;
     } else {
-        io::stdout().write_all(result.as_bytes()).context("Failed to write result to stdout")?;
+        io::stdout()
+            .write_all(result.as_bytes())
+            .context("Failed to write result to stdout")?;
     }
     Ok(())
 }
