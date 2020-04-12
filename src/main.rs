@@ -69,8 +69,11 @@ fn main() -> anyhow::Result<()> {
         tera::Tera::one_off(&template, &ctx, args.escape).context("Failed to render template")?;
 
     if let Some(output) = args.output {
-        fs::File::open(&output)
-            .with_context(|| format!("Failed to open {}", output.display()))?
+        fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&output)
+            .with_context(|| format!("Failed to write to {}", output.display()))?
             .write_all(result.as_bytes())?;
     } else {
         io::stdout()
