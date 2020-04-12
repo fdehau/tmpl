@@ -168,10 +168,18 @@ fn test_write_to_existing_file() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 const TEMPLATE_NOT_FOUND_ERROR: &str = r#"Error: Failed to load template from file
 
 Caused by:
     No such file or directory (os error 2)
+"#;
+
+#[cfg(target_os = "windows")]
+const TEMPLATE_NOT_FOUND_ERROR: &str = r#"Error: Failed to load template from file
+
+Caused by:
+    The system cannot find the file specified. (os error 2)
 "#;
 
 #[test]
