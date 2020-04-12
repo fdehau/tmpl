@@ -1,73 +1,239 @@
-use anyhow::Context;
-use assert_cmd::{assert::OutputAssertExt, Command};
-use std::{
-    fs::File,
-    io::{self, Write},
-    path::{Path, PathBuf},
+use assert_cmd::Command;
+use assert_fs::{
+    assert::PathAssert,
+    fixture::{FileTouch, FileWriteStr, PathChild},
+    TempDir,
 };
-use tempdir::TempDir;
 
-struct TestContext {
-    dir: TempDir,
+#[test]
+fn test_merge() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
+
+    let vars1 = tmp.child("vars1.json");
+    vars1.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "name": "florian",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
+    let vars2 = tmp.child("vars2.json");
+    vars2.write_str(
+        r#"
+        {
+            "user": {
+                "id" : "2"
+            }
+        }
+    "#,
+    )?;
+
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .write_stdin("{{ user.id }},{{ user.name }},{{ user.path }}")
+        .arg(vars1.path())
+        .arg(vars2.path())
+        .assert()
+        .success()
+        .stdout("2,florian,/users/1");
+
+    Ok(())
 }
 
-impl TestContext {
-    fn new() -> io::Result<TestContext> {
-        let dir = TempDir::new("tmpl_tests")?;
-        let ctx = TestContext { dir };
-        Ok(ctx)
-    }
+#[test]
+fn test_escape() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
 
-    fn create_file<P>(&self, name: P, content: &str) -> anyhow::Result<PathBuf>
-    where
-        P: AsRef<Path>,
-    {
-        let path = self.dir.path().join(name.as_ref());
-        let mut file = File::create(&path)
-            .with_context(|| format!("Failed to create file {}", path.display()))?;
-        file.write_all(content.as_bytes())?;
-        Ok(path)
-    }
+    let vars = tmp.child("vars.json");
+    vars.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "name": "florian",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
 
-    fn close(self) -> io::Result<()> {
-        self.dir.close()
-    }
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .write_stdin("{{ user.id }},{{ user.name }},{{ user.path }}")
+        .arg(vars.path())
+        .arg("-e")
+        .assert()
+        .success()
+        .stdout("1,florian,&#x2F;users&#x2F;1");
+
+    Ok(())
 }
 
-const TEMPLATE: &'static str = "{{ user.id }}|{{ user.name }}";
+#[test]
+fn test_read_from_file() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
 
-const VARIABLES_1: &'static str = r#"
-{
-    "user": {
-        "id": 1,
-        "name": "florian"
-    }
-}
-"#;
+    let vars = tmp.child("vars.json");
+    vars.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "name": "florian",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
 
-const VARIABLES_2: &'static str = r#"
-{
-    "user": {
-        "id": 2,
-        "name": "florian"
-    }
+    let template = tmp.child("template.tera");
+    template.write_str("{{ user.id }},{{ user.name }},{{ user.path }}")?;
+
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .arg("-t")
+        .arg(template.path())
+        .arg(vars.path())
+        .assert()
+        .success()
+        .stdout("1,florian,/users/1");
+
+    Ok(())
 }
+
+#[test]
+fn test_write_to_missing_file() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
+
+    let vars = tmp.child("vars.json");
+    vars.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "name": "florian",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
+    let output = tmp.child("output.txt");
+
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .write_stdin("{{ user.id }},{{ user.name }},{{ user.path }}")
+        .arg("-o")
+        .arg(output.path())
+        .arg(vars.path())
+        .assert()
+        .success()
+        .stdout("");
+
+    output.assert("1,florian,/users/1");
+
+    Ok(())
+}
+
+#[test]
+fn test_write_to_existing_file() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
+
+    let vars = tmp.child("vars.json");
+    vars.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "name": "florian",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
+
+    let output = tmp.child("output.txt");
+    output.touch()?;
+
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .write_stdin("{{ user.id }},{{ user.name }},{{ user.path }}")
+        .arg("-o")
+        .arg(output.path())
+        .arg(vars.path())
+        .assert()
+        .success()
+        .stdout("");
+
+    output.assert("1,florian,/users/1");
+
+    Ok(())
+}
+
+const TEMPLATE_NOT_FOUND_ERROR: &str = r#"Error: Failed to load template from file
+
+Caused by:
+    No such file or directory (os error 2)
 "#;
 
 #[test]
-fn test_success() {
-    let context = TestContext::new().unwrap();
+fn test_template_file_not_found() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
 
-    let vars1 = context.create_file("vars_1.json", VARIABLES_1).unwrap();
-    let vars2 = context.create_file("vars_2.json", VARIABLES_2).unwrap();
+    let vars = tmp.child("vars.json");
+    vars.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
 
-    let cmd = Command::cargo_bin(env!("CARGO_PKG_NAME"))
-        .unwrap()
-        .write_stdin(TEMPLATE)
-        .arg(vars1)
-        .arg(vars2)
-        .unwrap();
-    cmd.assert().success().stdout("2|florian");
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .arg("-t")
+        .arg(tmp.child("template.tera").path())
+        .arg(vars.path())
+        .assert()
+        .failure()
+        .code(1)
+        .stdout("")
+        .stderr(TEMPLATE_NOT_FOUND_ERROR);
 
-    context.close().unwrap();
+    Ok(())
+}
+
+const UNDEFINED_VARIABLE_ERROR: &str = r#"Error: Failed to render template
+
+Caused by:
+    0: Failed to render '__tera_one_off'
+    1: Variable `user.name` not found in context while rendering '__tera_one_off'
+"#;
+
+#[test]
+fn test_undefined_var() -> anyhow::Result<()> {
+    let tmp = TempDir::new()?;
+
+    let vars = tmp.child("vars.json");
+    vars.write_str(
+        r#"
+        {
+            "user": {
+                "id":"1",
+                "path": "/users/1"
+            }
+        }
+    "#,
+    )?;
+
+    Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+        .write_stdin("{{ user.id }},{{ user.name }},{{ user.path }}")
+        .arg(vars.path())
+        .assert()
+        .failure()
+        .code(1)
+        .stdout("")
+        .stderr(UNDEFINED_VARIABLE_ERROR);
+
+    Ok(())
 }
