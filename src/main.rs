@@ -31,6 +31,9 @@ struct Args {
     /// stdout.
     #[argh(option, short = 'o')]
     output: Option<PathBuf>,
+    /// whether the output will be escaped.
+    #[argh(switch, short = 'e')]
+    escape: bool,
     /// a list of json files containing variables used when rendering the template.
     #[argh(positional)]
     sources: Vec<PathBuf>,
@@ -62,7 +65,8 @@ fn main() -> anyhow::Result<()> {
     } else {
         tera::Context::from_serialize(variables).context("Failed to create template context")?
     };
-    let result = tera::Tera::one_off(&template, &ctx, true).context("Failed to render template")?;
+    let result =
+        tera::Tera::one_off(&template, &ctx, args.escape).context("Failed to render template")?;
 
     if let Some(output) = args.output {
         fs::File::open(&output)
